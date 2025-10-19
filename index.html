@@ -108,12 +108,13 @@
 
     if (hour >= 7 && hour < 15) {
       shift = "الوردية الصباحية";
-      if (isEvenWeek) { team = "الفريق B"; worker = "هند"; }
-      else { team = "الفريق A"; worker = "رضوان"; }
-    } else if (hour >= 15 && hour < 23) {
-      shift = "الوردية المسائية";
       if (isEvenWeek) { team = "الفريق A"; worker = "رضوان"; }
       else { team = "الفريق B"; worker = "هند"; }
+    } else if (hour >= 15 && hour < 23) {
+      shift = "الوردية المسائية";
+       if (isEvenWeek) { team = "الفريق B"; worker = "هند"; }
+      else { team = "الفريق A"; worker = "رضوان"; }
+     
     } else {
       shift = "الوردية الليلية";
       team = "لا أحد";
@@ -139,7 +140,7 @@
     const { team, shift, worker } = getCurrentShiftAndTeam();
 
     dateTimeInfo.innerHTML = `🧾 الأسبوع رقم: ${week} - 📅 التاريخ: ${date} - 🕓 الوقت: ${time}`;
-    teamInfo.innerHTML = `👷 الفريق: ${team} - 🕒 الشفت: ${shift} - 🧑‍🔧 العامل: ${worker}`;
+    teamInfo.innerHTML = `👷 الفريق: ${team} - 🕒 الشفت: ${shift} - 🧑‍🔧 OPS: ${worker}`;
   }
 
   // 📦 تحميل البيانات من Supabase
@@ -270,3 +271,4 @@
 
 </body>
 </html>
+
