@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>إدخال بيانات الإنتاج</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- مكتبة Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- مكتبة قراءة الكود بار -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      direction: rtl;
+      font-family: Arial;
+      background: #f8f9fa;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #00796b;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, textarea {
+      width: 80%;
+      max-width: 400px;
+      padding: 10px;
+      margin-top: 5px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    textarea {
+      height: 60px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 16px;
+      background-color: #00796b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    .nav-button {
+      margin-top: 15px;
+      background-color: #2196F3;
+    }
+
+    .info {
+      margin-top: 15px;
+      color: #444;
+      font-size: 16px;
+    }
+
+    #reader {
+      width: 300px;
+      height: 300px;
+      margin: 15px auto;
+      display: none;
+      border: 2px dashed #009688;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    #scanBtn {
+      background-color: #FF9800;
+      margin-top: 15px;
+    }
+
+    #closeScanBtn {
+      display: none;
+      background-color: #f44336;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📝 إدخال بيانات الإنتاج</h2>
+
+  <div class="info" id="headerInfo"></div>
+
+  <form id="inputForm" onsubmit="addEntry(event)">
+    <label>🔢 رقم المنتج:</label>
+    <input type="text" id="numberInput" placeholder="أدخل رقم المنتج يدويًا أو امسحه بالكاميرا" required>
+
+    <div>
+      <button type="button" id="scanBtn" onclick="startScan()">📷 مسح الكود بار</button>
+      <button type="button" id="closeScanBtn" onclick="stopScan()">❌ إيقاف المسح</button>
+    </div>
+
+    <div id="reader"></div>
+
+    <label>🗒️ ملاحظة:</label>
+    <textarea id="noteInput" placeholder="أدخل ملاحظاتك إن وجدت..."></textarea>
+
+    <button type="submit">✅ إدخال</button>
+  </form>
+
+  <button class="nav-button" onclick="goToDisplay()">📊 عرض البيانات</button>
+
+  <script>
+    // 🧩 إعداد Supabase
+    const SUPABASE_URL = "https://nvjlbhdgtwvytzzjeorr.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52amxiaGRndHd2eXR6emplb3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTY4MzIsImV4cCI6MjA3NjM5MjgzMn0.YcwKNJ3fhyIQod4KSgq_Loz1CbxDTXQF17E1rWGTmTI";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // حساب رقم الأسبوع
+    function getWeekNumber(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // تحديد الفريق والشفت والعامل
+    function getCurrentShiftAndTeam() {
+      const now = new Date();
+      const hour = now.getHours();
+      const week = getWeekNumber(now);
+      const isEvenWeek = week % 2 === 0;
+
+      let shift = "", team = "", worker = "";
+
+      if (hour >= 7 && hour < 15) {
+        shift = "الوردية الصباحية";
+        if (isEvenWeek) { team = "الفريق B"; worker = "هند"; }
+        else { team = "الفريق A"; worker = "رضوان"; }
+      } else if (hour >= 15 && hour < 23) {
+        shift = "الوردية المسائية";
+        if (isEvenWeek) { team = "الفريق A"; worker = "رضوان"; }
+        else { team = "الفريق B"; worker = "هند"; }
+      } else {
+        shift = "الوردية الليلية";
+        team = "لا أحد";
+        worker = "لا يوجد";
+      }
+
+      return { team, shift, worker };
+    }
+
+    // تحديث معلومات الرأس
+    function updateHeader() {
+      const now = new Date();
+      const date = now.toLocaleDateString('ar-MA');
+      const time = now.toLocaleTimeString('ar-MA');
+      const week = getWeekNumber(now);
+      const { team, shift, worker } = getCurrentShiftAndTeam();
+
+      document.getElementById('headerInfo').innerHTML = 
+        `📆 الأسبوع ${week} | 📅 ${date} | 🕒 ${time}<br>
+         👷 الفريق: ${team} | 🧑‍🔧 العامل: ${worker} | ⏰ الشفت: ${shift}`;
+    }
+
+    // 🧾 إدخال البيانات إلى Supabase
+    async function addEntry(event) {
+      event.preventDefault();
+
+      const number = document.getElementById('numberInput').value.trim();
+      const note = document.getElementById('noteInput').value.trim();
+      const now = new Date();
+      const time = now.toLocaleTimeString('ar-MA');
+      const date = now.toLocaleDateString('ar-MA');
+      const week = getWeekNumber(now);
+      const { team, shift, worker } = getCurrentShiftAndTeam();
+
+      if (number === "") {
+        alert("الرجاء إدخال رقم المنتج.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('production_entries')
+        .insert([{ time, number, note, team, worker, shift, date, week }]);
+
+      if (error) {
+        console.error("خطأ في الحفظ:", error);
+        alert("❌ فشل إدخال البيانات إلى Supabase.");
+      } else {
+        alert("✅ تم إدخال البيانات بنجاح!");
+        document.getElementById('inputForm').reset();
+      }
+    }
+
+    // 📸 إعداد الكاميرا لمسح الكود
+    let html5QrCode;
+
+    function startScan() {
+      document.getElementById("reader").style.display = "block";
+      document.getElementById("scanBtn").style.display = "none";
+      document.getElementById("closeScanBtn").style.display = "inline-block";
+
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" }, // الكاميرا الخلفية
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          document.getElementById("numberInput").value = decodedText;
+          stopScan();
+        },
+        (errorMessage) => {}
+      ).catch(err => {
+        alert("تعذر فتح الكاميرا: " + err);
+      });
+    }
+
+    function stopScan() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          document.getElementById("reader").style.display = "none";
+          document.getElementById("scanBtn").style.display = "inline-block";
+          document.getElementById("closeScanBtn").style.display = "none";
+        });
+      }
+    }
+
+    // الانتقال إلى صفحة العرض
+    function goToDisplay() {
+      window.location.href = "index.html";
+    }
+
+    // بدء التحديث
+    window.onload = updateHeader;
+  </script>
+
+</body>
+</html>

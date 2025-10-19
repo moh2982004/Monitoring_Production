@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 عرض بيانات الإنتاج</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- مكتبة Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <!-- مكتبة Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      direction: rtl;
+      font-family: Arial;
+      background: #f0f0f0;
+      padding: 20px;
+      text-align: center;
+    }
+    .header-info {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    .total-counter {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #004d40;
+    }
+    table {
+      width: 100%;
+      max-width: 900px;
+      margin: auto;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #009688;
+      color: white;
+    }
+    .nav-button {
+      margin: 20px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+<h2>📊 عرض بيانات الإنتاج</h2>
+
+<div class="header-info" id="dateTimeInfo"></div>
+<div class="header-info" id="teamInfo"></div>
+
+<div class="total-counter">
+  إجمالي الإنتاج: <span id="totalCount">0</span> منتج
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>الساعة</th>
+      <th>الرقم</th>
+      <th>الملاحظة</th>
+      <th>🔒 حذف</th>
+    </tr>
+  </thead>
+  <tbody id="dataTable"></tbody>
+</table>
+
+<button class="nav-button" onclick="goToInput()">🔁 العودة إلى الإدخال</button>
+<button class="nav-button" onclick="exportToExcel()">📥 تحميل كـ Excel</button>
+<button class="nav-button" onclick="clearData()">🗑️ مسح البيانات</button>
+
+<script>
+  // 🧩 إعداد Supabase
+  const SUPABASE_URL = "https://nvjlbhdgtwvytzzjeorr.supabase.co"; // 🔹 ضع رابط مشروعك هنا
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52amxiaGRndHd2eXR6emplb3JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTY4MzIsImV4cCI6MjA3NjM5MjgzMn0.YcwKNJ3fhyIQod4KSgq_Loz1CbxDTXQF17E1rWGTmTI"; // 🔹 ضع مفتاحك العام (anon key) هنا
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const table = document.getElementById('dataTable');
+  const totalCount = document.getElementById('totalCount');
+  const dateTimeInfo = document.getElementById('dateTimeInfo');
+  const teamInfo = document.getElementById('teamInfo');
+
+  // 🧠 تحديد الفريق والشفت والعامل
+  function getCurrentShiftAndTeam() {
+    const now = new Date();
+    const hour = now.getHours();
+    const week = getWeekNumber(now);
+    const isEvenWeek = week % 2 === 0;
+
+    let shift = "", team = "", worker = "";
+
+    if (hour >= 7 && hour < 15) {
+      shift = "الوردية الصباحية";
+      if (isEvenWeek) { team = "الفريق B"; worker = "هند"; }
+      else { team = "الفريق A"; worker = "رضوان"; }
+    } else if (hour >= 15 && hour < 23) {
+      shift = "الوردية المسائية";
+      if (isEvenWeek) { team = "الفريق A"; worker = "رضوان"; }
+      else { team = "الفريق B"; worker = "هند"; }
+    } else {
+      shift = "الوردية الليلية";
+      team = "لا أحد";
+      worker = "لا يوجد";
+    }
+
+    return { team, shift, worker };
+  }
+
+  function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  }
+
+  function updateHeaderInfo() {
+    const now = new Date();
+    const date = now.toLocaleDateString('ar-MA');
+    const time = now.toLocaleTimeString('ar-MA');
+    const week = getWeekNumber(now);
+    const { team, shift, worker } = getCurrentShiftAndTeam();
+
+    dateTimeInfo.innerHTML = `🧾 الأسبوع رقم: ${week} - 📅 التاريخ: ${date} - 🕓 الوقت: ${time}`;
+    teamInfo.innerHTML = `👷 الفريق: ${team} - 🕒 الشفت: ${shift} - 🧑‍🔧 العامل: ${worker}`;
+  }
+
+  // 📦 تحميل البيانات من Supabase
+  async function loadData() {
+    const { data: entries, error } = await supabase
+      .from('production_entries')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.error("خطأ في تحميل البيانات:", error);
+      alert("فشل تحميل البيانات من Supabase");
+      return;
+    }
+
+    table.innerHTML = '';
+    let total = 0;
+
+    entries.forEach((entry) => {
+      const row = document.createElement('tr');
+
+      const timeCell = document.createElement('td');
+      timeCell.textContent = entry.time || '';
+
+      const numberCell = document.createElement('td');
+      numberCell.textContent = entry.number || '';
+
+      const noteCell = document.createElement('td');
+      noteCell.textContent = entry.note || '';
+
+      const deleteCell = document.createElement('td');
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.style.cursor = "pointer";
+      deleteBtn.onclick = () => deleteRow(entry.id);
+      deleteCell.appendChild(deleteBtn);
+
+      row.appendChild(timeCell);
+      row.appendChild(numberCell);
+      row.appendChild(noteCell);
+      row.appendChild(deleteCell);
+      table.appendChild(row);
+
+      if (entry.number && entry.number.trim() !== '') total++;
+    });
+
+    totalCount.textContent = total;
+  }
+
+  function goToInput() {
+    window.location.href = "input.html";
+  }
+
+  // 📤 تصدير Excel
+  async function exportToExcel() {
+    const { data: entries, error } = await supabase.from('production_entries').select('*');
+    if (error || entries.length === 0) {
+      alert("❌ لا توجد بيانات للتصدير أو فشل الاتصال بقاعدة البيانات.");
+      return;
+    }
+
+    const now = new Date();
+    const date = now.toLocaleDateString('ar-MA');
+    const time = now.toLocaleTimeString('ar-MA');
+    const week = getWeekNumber(now);
+    const { team, shift, worker } = getCurrentShiftAndTeam();
+
+    const headerInfo = [
+      ["📅 التاريخ", date],
+      ["🕓 الوقت", time],
+      ["📆 رقم الأسبوع", week],
+      ["👷 اسم الفريق", team],
+      ["🧑‍🔧 اسم العامل", worker],
+      ["🕒 الشفت", shift],
+      [],
+      ["الساعة", "الرقم", "الملاحظة"]
+    ];
+
+    const dataRows = entries.map(e => [e.time, e.number, e.note]);
+    const fullData = [...headerInfo, ...dataRows];
+
+    const ws = XLSX.utils.aoa_to_sheet(fullData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "الإنتاج");
+    XLSX.writeFile(wb, `بيانات_الإنتاج_${date}.xlsx`);
+  }
+
+  // 🧹 حذف صف واحد
+  async function deleteRow(id) {
+    const code = prompt("أدخل الرمز السري لحذف هذا السطر:");
+    if (code === "1234") {
+      const { error } = await supabase.from('production_entries').delete().eq('id', id);
+      if (error) {
+        alert("❌ فشل الحذف من قاعدة البيانات.");
+      } else {
+        alert("✅ تم حذف السطر بنجاح.");
+        loadData();
+      }
+    } else {
+      alert("❌ رمز غير صحيح.");
+    }
+  }
+
+  // 🧨 مسح كل البيانات
+  async function clearData() {
+    const code = prompt("أدخل الرمز السري لمسح جميع البيانات:");
+    if (code === "1234") {
+      if (confirm("⚠️ هل أنت متأكد أنك تريد مسح جميع البيانات؟")) {
+        const { error } = await supabase.from('production_entries').delete().neq('id', 0);
+        if (error) {
+          alert("❌ فشل المسح من قاعدة البيانات.");
+        } else {
+          alert("✅ تم مسح جميع البيانات.");
+          loadData();
+        }
+      }
+    } else {
+      alert("❌ رمز غير صحيح.");
+    }
+  }
+
+  // 🚀 بدء التشغيل
+  window.onload = function () {
+    updateHeaderInfo();
+    loadData();
+  };
+</script>
+
+</body>
+</html>
