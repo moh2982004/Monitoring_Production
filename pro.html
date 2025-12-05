@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Affichage de la production</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+  direction: rtl;
+  font-family: Arial;
+  background: #f0f0f0;
+  padding: 20px;
+  text-align: center;
+}
+.header-info {
+  font-size: 18px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.total-counter {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 20px 0;
+  color: #004d40;
+}
+table {
+  width: 100%;
+  max-width: 900px;
+  margin: auto;
+  border-collapse: collapse;
+  background: white;
+}
+th, td {
+  padding: 12px;
+  border: 1px solid #ccc;
+}
+th {
+  background: #009688;
+  color: white;
+}
+.nav-button {
+  margin: 10px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+/* Modals */
+#editModal, #inputModal {position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: none; justify-content:center; align-items:center;}
+#editContent, #inputContent {background:white; padding:20px; border-radius:10px; width:90%; max-width:400px; text-align:right;}
+input, select {width:100%; padding:8px; margin:8px 0 15px 0; border:1px solid #aaa; border-radius:6px;}
+label {display:flex; align-items:center;}
+</style>
+</head>
+<body>
+
+<h2>📊 Affichage des données de production</h2>
+
+<div class="header-info" id="dateTimeInfo"></div>
+<div class="header-info" id="teamInfo"></div>
+
+<button class="nav-button" onclick="openEdit()">✏️ Modifier les informations</button>
+<button class="nav-button" onclick="openInput()">➕ Ajouter une entrée</button>
+<button class="nav-button" onclick="exportVisiblePDF()">📄 Exporter PDF de la page</button>
+<button class="nav-button" onclick="exportAndClearVisiblePDF()">🗑️ Supprimer le tableau visible (PDF d'abord)</button>
+<button class="nav-button" onclick="exportToExcel()">📥 Exporter Excel</button>
+
+<div class="total-counter">
+  Total produits : <span id="totalCount">0</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Heure</th>
+      <th>Numéro</th>
+      <th>Remarque</th>
+      <th>Supprimer</th>
+    </tr>
+  </thead>
+  <tbody id="dataTable"></tbody>
+</table>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<!-- Modal édition -->
+<div id="editModal">
+  <div id="editContent">
+    <h3>Modifier les informations</h3>
+    <label><input type="checkbox" id="checkWeek"> Numéro de la semaine:</label>
+    <input id="editWeek">
+    <label><input type="checkbox" id="checkDate"> Date:</label>
+    <input id="editDate" type="date">
+    <label><input type="checkbox" id="checkTeam"> Équipe:</label>
+    <input id="editTeam">
+    <label><input type="checkbox" id="checkShift"> Quart:</label>
+    <input id="editShift">
+    <label><input type="checkbox" id="checkWorker"> Travailleur:</label>
+    <input id="editWorker">
+    <button class="nav-button" onclick="saveEdit()">💾 Sauvegarder</button>
+    <button class="nav-button" style="background:red" onclick="closeEdit()">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal saisie -->
+<div id="inputModal">
+  <div id="inputContent">
+    <h3>Ajouter une nouvelle entrée</h3>
+    <label>Numéro du produit:</label>
+    <input id="inNumber">
+    <label>Remarque:</label>
+    <input id="inNote">
+    <button class="nav-button" onclick="saveInput()">💾 Sauvegarder</button>
+    <button class="nav-button" style="background:red" onclick="closeInput()">Annuler</button>
+  </div>
+</div>
+
+<script>
+const dateTimeInfo=document.getElementById("dateTimeInfo");
+const teamInfo=document.getElementById("teamInfo");
+const table=document.getElementById("dataTable");
+const totalCount=document.getElementById("totalCount");
+
+// Fonctions originales
+function getCurrentShiftAndTeam(){
+  const now=new Date();
+  const hour=now.getHours();
+  const week=getWeekNumber(now);
+  const isEvenWeek=week%2===0;
+  let shift="",team="",worker="";
+  if(hour>=7 && hour<15){shift="Quart du matin"; team=isEvenWeek?"Équipe B":"Équipe A"; worker=isEvenWeek?"Hind":"Redouane";}
+  else if(hour>=15 && hour<23){shift="Quart de soir"; team=isEvenWeek?"Équipe A":"Équipe B"; worker=isEvenWeek?"Redouane":"Hind";}
+  else{shift="Quart de nuit"; team="Personne"; worker="Aucun";}
+  return {team,shift,worker};
+}
+
+function getWeekNumber(d){
+  d=new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-dayNum);
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
+// Mise à jour du header
+function updateHeaderInfo(){
+  let saved=JSON.parse(localStorage.getItem("headerInfo"));
+  let now=new Date();
+  let date=now.toLocaleDateString('fr-FR');
+  let time=now.toLocaleTimeString('fr-FR');
+  let week=getWeekNumber(now);
+  let auto=getCurrentShiftAndTeam();
+  let info=saved||{date,time,week,team:auto.team,shift:auto.shift,worker:auto.worker};
+  dateTimeInfo.innerHTML=`🧾 Semaine: ${info.week} - 📅 Date: ${info.date} - 🕓 Heure: ${info.time}`;
+  teamInfo.innerHTML=`👷 Équipe: ${info.team} - 🕒 Quart: ${info.shift} - 🧑‍🔧 Travailleur: ${info.worker}`;
+}
+
+// Chargement tableau
+function loadData(){
+  const entries=JSON.parse(localStorage.getItem('entries')||'[]');
+  table.innerHTML="";
+  let total=0;
+  entries.forEach((e,i)=>{
+    const row=document.createElement("tr");
+    row.innerHTML=`<td>${e.time}</td><td>${e.number}</td><td>${e.note||''}</td>
+    <td><button onclick="deleteRow(${i})">🗑️</button></td>`;
+    table.appendChild(row);
+    if(e.number) total++;
+  });
+  totalCount.textContent=total;
+}
+
+// Edition header
+function openEdit(){
+  const saved=JSON.parse(localStorage.getItem("headerInfo"));
+  if(saved){
+    editWeek.value=saved.week;
+    editDate.value=saved.date;
+    editTeam.value=saved.team;
+    editShift.value=saved.shift;
+    editWorker.value=saved.worker;
+  }
+  document.getElementById("editModal").style.display="flex";
+}
+function closeEdit(){document.getElementById("editModal").style.display="none";}
+function saveEdit(){
+  let saved=JSON.parse(localStorage.getItem("headerInfo"))||{};
+  if(document.getElementById("checkWeek").checked) saved.week=editWeek.value;
+  if(document.getElementById("checkDate").checked) saved.date=editDate.value;
+  if(document.getElementById("checkTeam").checked) saved.team=editTeam.value;
+  if(document.getElementById("checkShift").checked) saved.shift=editShift.value;
+  if(document.getElementById("checkWorker").checked) saved.worker=editWorker.value;
+  saved.time=new Date().toLocaleTimeString('fr-FR');
+  localStorage.setItem("headerInfo",JSON.stringify(saved));
+  closeEdit();
+  updateHeaderInfo();
+}
+
+// Modal saisie
+function openInput(){document.getElementById("inputModal").style.display="flex";}
+function closeInput(){document.getElementById("inputModal").style.display="none";}
+function saveInput(){
+  const number=inNumber.value.trim();
+  const note=inNote.value.trim();
+  if(!number) return alert("Le numéro est obligatoire");
+  let entries=JSON.parse(localStorage.getItem("entries")||'[]');
+  let fullEntries=JSON.parse(localStorage.getItem("fullEntries")||'[]');
+  const time=new Date().toLocaleTimeString('fr-FR');
+  const header=JSON.parse(localStorage.getItem("headerInfo"))||getCurrentShiftAndTeam();
+  const week=header.week||getWeekNumber(new Date());
+  const date=header.date||new Date().toLocaleDateString('fr-FR');
+  const team=header.team;
+  const shift=header.shift;
+  const worker=header.worker;
+
+  fullEntries.push({week,date,time,team,shift,worker,number,note});
+  localStorage.setItem("fullEntries",JSON.stringify(fullEntries));
+
+  const existing=entries.find(e=>e.number===number);
+  if(existing){if(note) existing.note=existing.note?existing.note+" | "+note:note;}
+  else entries.push({time,number,note});
+  localStorage.setItem("entries",JSON.stringify(entries));
+
+  inNumber.value=""; inNote.value="";
+  closeInput();
+  loadData();
+}
+
+// Supprimer ligne individuelle
+function deleteRow(index){
+  const code=prompt("Entrez le code pour supprimer la ligne:");
+  if(code!=="1234") return alert("Code incorrect");
+  let entries=JSON.parse(localStorage.getItem("entries")||'[]');
+  let fullEntries=JSON.parse(localStorage.getItem("fullEntries")||'[]');
+  const removed=entries.splice(index,1)[0];
+  localStorage.setItem("entries",JSON.stringify(entries));
+  fullEntries=fullEntries.filter(f=>!(f.number===removed.number && f.time===removed.time));
+  localStorage.setItem("fullEntries",JSON.stringify(fullEntries));
+  loadData();
+}
+
+// Export Excel complet
+function exportToExcel(){
+  const fullEntries=JSON.parse(localStorage.getItem("fullEntries")||"[]");
+  if(!fullEntries.length) return alert("Pas de données");
+  const sheetData=[["Semaine","Date","Heure","Équipe","Quart","Travailleur","Numéro","Remarque"]];
+  fullEntries.forEach(e=>sheetData.push([e.week,e.date,e.time,e.team,e.shift,e.worker,e.number,e.note]));
+  const ws=XLSX.utils.aoa_to_sheet(sheetData);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Production");
+  XLSX.writeFile(wb,"production.xlsx");
+}
+
+// **PDF capture de la page**
+function exportVisiblePDF() {
+  const element = document.body;
+  html2canvas(element, {scale:2}).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save("page_visible.pdf");
+  });
+}
+
+function exportAndClearVisiblePDF() {
+  const element = document.body;
+  html2canvas(element, {scale:2}).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save("page_visible.pdf");
+
+    // Effacer tableau visible
+    localStorage.removeItem("entries");
+    table.innerHTML="";
+    totalCount.textContent=0;
+  });
+}
+
+window.onload=()=>{updateHeaderInfo(); loadData();}
+</script>
+
+</body>
+</html>
