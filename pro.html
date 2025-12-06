@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Affichage de la production</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  direction:rtl;
+  font-family:Arial;
+  background:#ff9800;
+  padding:20px;
+  text-align:center;
+}
+.header-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.header-item {
+  background:#fff3e0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  border: 2px solid #000000;
+  min-width: 150px;
+  text-align: center;
+}
+.header-item:hover {
+  background-color: #ffcc80;
+  transform: translateY(-2px);
+}
+.header-item .label {
+  font-size: 12px;
+  color: #000000;
+  margin-bottom: 5px;
+}
+.header-item .value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #000000;
+}
+.total-counter{
+  font-size:28px;
+  font-weight:bold;
+  margin:20px auto;
+  color: #000000;
+  background: #fff3e0;
+  padding: 15px;
+  border-radius: 10px;
+  border: 2px solid #000000;
+  display: inline-block;
+  width: 90%;
+  max-width: 800px;
+  box-sizing: border-box;
+}
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+.nav-button{
+  background:#000000;
+  color:white;
+  border:none;
+  padding:10px 18px;
+  font-size:15px;
+  cursor:pointer;
+  border-radius:4px;
+  border: 2px solid white;
+  min-width: 150px;
+}
+.nav-button:hover{
+  background:#333333;
+}
+table{
+  width:100%;
+  max-width:1000px;
+  margin:auto;
+  border-collapse:collapse;
+  background:#fff3e0;
+  border: 2px solid #000000;
+}
+th,td{
+  border:1px solid #000000;
+  padding:10px;
+  white-space:pre-line;
+}
+th{
+  background:#000000;
+  color:white;
+}
+td{
+  background:#fff3e0;
+}
+h2{
+  color: #000000;
+  margin-bottom: 20px;
+  background: #fff3e0;
+  padding: 15px;
+  border-radius: 10px;
+  border: 2px solid #000000;
+  display: inline-block;
+}
+.shift-nav-buttons {
+  margin: 15px 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.shift-nav-buttons .nav-button {
+  background: #000000;
+  color: white;
+  border: 2px solid white;
+}
+.shift-nav-buttons .nav-button:hover {
+  background: #333333;
+}
+.shift-info {
+  background: #fff3e0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px solid #000000;
+  margin: 10px auto;
+  display: inline-block;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<h2> SUIVI PRODUCTION MOBILISE</h2>
+
+
+<div class="header-container">
+  <div class="header-item" onclick="editHeaderItem('week')">
+    <div class="label">Semaine</div>
+    <div class="value" id="weekValue">0</div>
+  </div>
+  <div class="header-item" onclick="editHeaderItem('date')">
+    <div class="label">Date</div>
+    <div class="value" id="dateValue">00/00/0000</div>
+  </div>
+  <div class="header-item" onclick="editHeaderItem('time')">
+    <div class="label">Heure</div>
+    <div class="value" id="timeValue">00:00:00</div>
+  </div>
+  <div class="header-item" onclick="editHeaderItem('team')">
+    <div class="label">Équipe</div>
+    <div class="value" id="teamValue">A</div>
+  </div>
+  <div class="header-item" onclick="editHeaderItem('shift')">
+    <div class="label">Shift</div>
+    <div class="value" id="shiftValue">Matin</div>
+  </div>
+  <div class="header-item" onclick="editHeaderItem('worker')">
+    <div class="label">Travailleur</div>
+    <div class="value" id="workerValue">Nom</div>
+  </div>
+</div>
+
+<div class="buttons-container">
+  <button class="nav-button" onclick="openInput()">➕ Ajouter une entrée</button>
+  <button class="nav-button" onclick="exportVisiblePDF()">📄 Exporter PDF</button>
+  <button class="nav-button" onclick="exportAndClearVisiblePDF()">🗑️ Effacer  (PDF d'abord)</button>
+  <button class="nav-button" onclick="openExcelForm()">📥 Exporter Excel</button>
+  <button class="nav-button" onclick="openSearchModal()">🔍 Rechercher</button>
+</div>
+
+<div class="total-counter">
+  Total produits : <span id="totalCount">0</span>
+</div>
+
+
+<table>
+<thead>
+<tr>
+  <th>Heure</th>
+  <th>Numéro</th>
+  <th>Remarque</th>
+  <th>Supprimer</th>
+</tr>
+</thead>
+<tbody id="dataTable"></tbody>
+</table>
+
+<!-- عنصر عرض معلومات الشفت هنا (تم نقله أسفل الجدول) -->
+<div id="shiftInfoDisplay" class="shift-info" style="margin-top: 20px; margin-bottom: 20px;">
+  Shift: -- | Équipe: -- | Travailleur: -- | Date: --
+</div>
+
+<div class="shift-nav-buttons">
+  <button class="nav-button" onclick="previousShift()">⬅️ Shift Précédent</button>
+  <button class="nav-button" onclick="endCurrentShift()">🔄 Terminer Shift Actuel</button>
+  <button class="nav-button" onclick="nextShift()">➡️ Shift Suivant</button>
+</div>
+
+<!-- Modal إدخال -->
+<div id="inputModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
+  <div style="background:#fff3e0;padding:20px;border-radius:10px;width:300px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
+    <h3 style="color:#000000;margin-bottom:15px;">Nouvelle entrée</h3>
+    <input id="inNumber" placeholder="Numéro" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #000000;border-radius:4px;background:white">
+    <input id="inNote" placeholder="Remarque (اختياري)" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #000000;border-radius:4px;background:white">
+    <button class="nav-button" onclick="saveInput()" style="background:#000000;color:white;border:2px solid white">💾 Sauvegarder</button>
+    <button class="nav-button" style="background:#ff9800;color:#000000;border:2px solid #000000" onclick="closeInput()">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal Excel -->
+<div id="excelModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
+  <div style="background:#fff3e0;padding:20px;border-radius:10px;width:350px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
+    <h3 style="color:#000000;margin-bottom:15px;">Exporter Excel</h3>
+    <label style="display:block;margin-bottom:10px;color:#000000;">
+      <input type="radio" name="excelOption" value="range"> Entre deux dates
+    </label>
+    <label style="display:block;margin-bottom:15px;color:#000000;">
+      <input type="radio" name="excelOption" value="all" checked> Tout
+    </label>
+    
+    <input type="date" id="fromDate" style="width:100%;padding:10px;margin-top:5px;border:1px solid #000000;border-radius:4px;background:white" disabled>
+    <input type="date" id="toDate" style="width:100%;padding:10px;margin-top:10px;border:1px solid #000000;border-radius:4px;background:white" disabled>
+    <button class="nav-button" onclick="exportExcelWithOption()" style="background:#000000;color:white;border:2px solid white">💾 Exporter</button>
+    <button class="nav-button" style="background:#ff9800;color:#000000;border:2px solid #000000" onclick="closeExcelForm()">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal Search -->
+<div id="searchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
+  <div style="background:#fff3e0;padding:20px;border-radius:10px;width:400px;text-align:right;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
+    <h3 style="color:#000000;margin-bottom:15px;">Rechercher un numéro</h3>
+    <input id="searchNumber" placeholder="Numéro à rechercher" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #000000;border-radius:4px;background:white">
+    <button class="nav-button" onclick="searchNumber()" style="background:#000000;color:white;border:2px solid white">🔍 Rechercher</button>
+    <button class="nav-button" style="background:#ff9800;color:#000000;border:2px solid #000000" onclick="closeSearchModal()">Fermer</button>
+    <div id="searchResults" style="margin-top:15px;text-align:left"></div>
+  </div>
+</div>
+
+<!-- Modal تعديل معلومات الرأس -->
+<div id="editHeaderModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
+  <div style="background:#fff3e0;padding:20px;border-radius:10px;width:350px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
+    <h3 id="editHeaderTitle" style="color:#000000;margin-bottom:15px;">Modifier la valeur</h3>
+    <input id="editHeaderInput" style="width:100%;padding:10px;margin-bottom:15px;font-size:16px;border:1px solid #000000;border-radius:4px;background:white">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="nav-button" onclick="saveHeaderEdit()" style="background:#000000;color:white;border:2px solid white">Valider</button>
+      <button class="nav-button" style="background:#ff9800;color:#000000;border:2px solid #000000" onclick="closeHeaderEdit()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+const table = document.getElementById("dataTable");
+const totalCount = document.getElementById("totalCount");
+let currentShiftFilter = null;
+let currentEditItem = '';
+
+/* ===== UTIL ===== */
+function getWeekNumber(d){
+  d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-day);
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
+function getCurrentShiftAndTeam(){
+  const h=new Date().getHours();
+  const even=getWeekNumber(new Date())%2===0;
+  if(h>=7&&h<15) return {shift:"Matin",team:even?"B":"A",worker:even?"Hind":"Redouane"};
+  if(h>=15&&h<23) return {shift:"Soir",team:even?"A":"B",worker:even?"Redouane":"Hind"};
+  return {shift:"Nuit",team:"--",worker:"--"};
+}
+
+/* ===== إدارة الشيفتات ===== */
+function getCurrentShiftInfo() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR');
+  const auto = getCurrentShiftAndTeam();
+  const saved = JSON.parse(localStorage.getItem("headerInfo")) || {};
+  
+  return {
+    date: saved.date || dateStr,
+    shift: saved.shift || auto.shift,
+    team: saved.team || auto.team,
+    worker: saved.worker || auto.worker
+  };
+}
+
+function updateShiftInfo() {
+  const shiftInfo = getCurrentShiftInfo();
+  
+  // تحديث العنصر الموجود بدلاً من إنشاء جديد
+  const shiftInfoDisplay = document.getElementById("shiftInfoDisplay");
+  if (shiftInfoDisplay) {
+    shiftInfoDisplay.textContent = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | Travailleur: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
+  }
+
+  currentShiftFilter = null; // دائمًا الشفت الحالي عند التحديث
+  loadData();
+}
+
+function endCurrentShift() {
+  if(confirm("Êtes-vous sûr de vouloir terminer le shift actuel ? Le tableau visible sera effacé, mais les données resteront dans la base de données.")) {
+    const currentShift = getCurrentShiftInfo();
+    const db = JSON.parse(localStorage.getItem("database") || "[]");
+    const currentShiftData = db.filter(e => 
+      e.date === currentShift.date &&
+      e.shift === currentShift.shift &&
+      e.team === currentShift.team &&
+      e.worker === currentShift.worker
+    );
+
+    const endedShifts = JSON.parse(localStorage.getItem("endedShifts") || "[]");
+    currentShift.endedAt = new Date().toLocaleTimeString('fr-FR');
+    currentShift.data = currentShiftData;
+    endedShifts.push(currentShift);
+    localStorage.setItem("endedShifts", JSON.stringify(endedShifts));
+
+    table.innerHTML = "";
+    totalCount.textContent = "0";
+    currentShiftFilter = null;
+    document.getElementById("shiftInfoDisplay").textContent = "Shift: Terminé - Prêt pour nouveau shift";
+
+    alert("Shift terminé avec succès ! Le tableau est maintenant vide et prêt pour le prochain shift.");
+  }
+}
+
+function previousShift() {
+  const endedShifts = JSON.parse(localStorage.getItem("endedShifts") || "[]");
+  if(endedShifts.length === 0) {
+    alert("Aucun shift précédent disponible.");
+    return;
+  }
+  
+  const prevShift = endedShifts[endedShifts.length - 1];
+  currentShiftFilter = prevShift;
+
+  document.getElementById("shiftInfoDisplay").textContent = 
+    `Shift Précédent: ${prevShift.shift} | Équipe: ${prevShift.team} | Travailleur: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
+
+  loadData();
+}
+
+function nextShift() {
+  currentShiftFilter = null;
+  updateShiftInfo();
+}
+
+/* ===== HEADER ===== */
+function updateHeaderInfo(){
+  const saved=JSON.parse(localStorage.getItem("headerInfo"))||{};
+  const now=new Date();
+  const auto=getCurrentShiftAndTeam();
+  const autoWeek = getWeekNumber(now);
+  const autoDate = now.toLocaleDateString('fr-FR');
+  const autoTime = now.toLocaleTimeString('fr-FR');
+
+  document.getElementById("weekValue").textContent = saved.week || autoWeek;
+  document.getElementById("dateValue").textContent = saved.date || autoDate;
+  document.getElementById("timeValue").textContent = saved.time || autoTime;
+  document.getElementById("teamValue").textContent = saved.team || auto.team;
+  document.getElementById("shiftValue").textContent = saved.shift || auto.shift;
+  document.getElementById("workerValue").textContent = saved.worker || auto.worker;
+}
+
+/* ===== تعديل معلومات الرأس ===== */
+function editHeaderItem(item) {
+  currentEditItem = item;
+  const editModal = document.getElementById("editHeaderModal");
+  const editInput = document.getElementById("editHeaderInput");
+  const editTitle = document.getElementById("editHeaderTitle");
+  
+  // الحصول على القيمة الحالية
+  const currentValue = document.getElementById(item + "Value").textContent;
+  
+  // تعيين العنوان حسب العنمر
+  const labels = {
+    'week': 'Modifier la semaine',
+    'date': 'Modifier la date',
+    'time': 'Modifier l\'heure',
+    'team': 'Modifier l\'équipe',
+    'shift': 'Modifier le shift',
+    'worker': 'Modifier le travailleur'
+  };
+  
+  editTitle.textContent = labels[item] || 'Modifier la valeur';
+  editInput.value = currentValue;
+  editInput.focus();
+  editInput.select();
+  
+  editModal.style.display = "flex";
+}
+
+function closeHeaderEdit() {
+  document.getElementById("editHeaderModal").style.display = "none";
+  currentEditItem = '';
+}
+
+function saveHeaderEdit() {
+  const editInput = document.getElementById("editHeaderInput");
+  const newValue = editInput.value.trim();
+  
+  if (!newValue) {
+    alert("Veuillez entrer une valeur");
+    return;
+  }
+  
+  // تحديث العرض مباشرة
+  document.getElementById(currentEditItem + "Value").textContent = newValue;
+  
+  // حفظ في localStorage
+  let saved = JSON.parse(localStorage.getItem("headerInfo")) || {};
+  saved[currentEditItem] = newValue;
+  localStorage.setItem("headerInfo", JSON.stringify(saved));
+  
+  // تحديث معلومات الشفت
+  updateShiftInfo();
+  
+  closeHeaderEdit();
+}
+
+/* ===== تحديث الوقت تلقائياً ===== */
+function updateTime() {
+  const now = new Date();
+  const saved = JSON.parse(localStorage.getItem("headerInfo")) || {};
+  if (!saved.time) {
+    document.getElementById("timeValue").textContent = now.toLocaleTimeString('fr-FR');
+  }
+}
+
+/* ===== ENREGISTREMENT مع تراكم الملاحظات ===== */
+function saveInput(){
+  if(!inNumber.value.trim()) return alert("Numéro obligatoire");
+
+  let note=inNote.value.trim()||"NE";
+  let db=JSON.parse(localStorage.getItem("database")||"[]");
+
+  const existing=db.find(e=>e.number===inNumber.value.trim());
+
+  if(existing){
+    if(note!=="NE"){
+      if(existing.note && existing.note!=="NE"){
+        existing.note += "\n" + note;
+      }else{
+        existing.note = note;
+      }
+    }
+  }else{
+    const now=new Date();
+    const auto=getCurrentShiftAndTeam();
+    const saved=JSON.parse(localStorage.getItem("headerInfo"))||{};
+    db.push({
+      week:saved.week||getWeekNumber(now),
+      date:saved.date||now.toLocaleDateString('fr-FR'),
+      time:saved.time||now.toLocaleTimeString('fr-FR'),
+      team:saved.team||auto.team,
+      shift:saved.shift||auto.shift,
+      worker:saved.worker||auto.worker,
+      number:inNumber.value.trim(),
+      note:note
+    });
+  }
+
+  localStorage.setItem("database",JSON.stringify(db));
+  inNumber.value="";
+  inNote.value="";
+  closeInput();
+  loadData();
+}
+
+/* ===== TABLE ===== */
+function loadData(){
+  const db = JSON.parse(localStorage.getItem("database") || "[]");
+  table.innerHTML = "";
+
+  let filteredData = db;
+
+  if (currentShiftFilter) {
+    filteredData = currentShiftFilter.data || [];
+  } else {
+    const nowShift = getCurrentShiftInfo();
+    filteredData = db.filter(e =>
+      e.date === nowShift.date &&
+      e.shift === nowShift.shift &&
+      e.team === nowShift.team &&
+      e.worker === nowShift.worker
+    );
+  }
+
+  totalCount.textContent = filteredData.length;
+
+  filteredData.forEach((e, i) => {
+    const realIndex = db.findIndex(item => 
+      item.date === e.date &&
+      item.time === e.time &&
+      item.number === e.number
+    );
+    
+    table.innerHTML += `
+    <tr>
+      <td>${e.time}</td>
+      <td>${e.number}</td>
+      <td>${e.note}</td>
+      <td><button onclick="deleteRow(${realIndex})" style="background:#000000;color:white;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;border:1px solid white">🗑️</button></td>
+    </tr>`;
+  });
+}
+
+/* ===== حذف صف ===== */
+function deleteRow(i){
+  if(prompt("Code suppression ?")!=="1234") return;
+  let db=JSON.parse(localStorage.getItem("database")||"[]");
+  db.splice(i,1);
+  localStorage.setItem("database",JSON.stringify(db));
+  loadData();
+}
+
+/* ===== EXPORT PDF ===== */
+function exportVisiblePDF(){
+  html2canvas(document.body,{scale:2}).then(c=>{
+    const pdf=new jspdf.jsPDF();
+    pdf.addImage(c.toDataURL("image/png"),"PNG",0,0,210,c.height*210/c.width);
+    pdf.save("page_visible.pdf");
+  });
+}
+
+/* ===== مسح الجدول فقط بعد PDF ===== */
+function exportAndClearVisiblePDF(){
+  html2canvas(document.body,{scale:2}).then(c=>{
+    const pdf=new jspdf.jsPDF();
+    pdf.addImage(c.toDataURL("image/png"),"PNG",0,0,210,c.height*210/c.width);
+    pdf.save("page_visible.pdf");
+    table.innerHTML = "";
+    totalCount.textContent = 0;
+  });
+}
+
+/* ===== Excel مع Form فترة زمنية ===== */
+const excelModal = document.getElementById("excelModal");
+const fromDateInput = document.getElementById("fromDate");
+const toDateInput = document.getElementById("toDate");
+
+function openExcelForm(){ excelModal.style.display="flex"; }
+function closeExcelForm(){ excelModal.style.display="none"; }
+
+document.querySelectorAll('input[name="excelOption"]').forEach(radio=>{
+  radio.addEventListener("change",()=>{
+    if(radio.value==="range" && radio.checked){
+      fromDateInput.disabled=false;
+      toDateInput.disabled=false;
+    }else{
+      fromDateInput.disabled=true;
+      toDateInput.disabled=true;
+    }
+  });
+});
+
+function exportExcelWithOption(){
+  const db=JSON.parse(localStorage.getItem("database")||"[]");
+  if(!db.length) return alert("Pas de données");
+
+  const option = document.querySelector('input[name="excelOption"]:checked').value;
+  let filtered=db;
+
+  if(option==="range"){
+    const from = new Date(fromDateInput.value);
+    const to = new Date(toDateInput.value);
+    if(!fromDateInput.value || !toDateInput.value) return alert("Veuillez choisir les deux dates");
+    filtered = db.filter(e=>{
+      const d=new Date(e.date.split('/').reverse().join('-'));
+      return d>=from && d<=to;
+    });
+  }
+
+  const data=[["Semaine","Date","Heure","Équipe","Shift","Travailleur","Numéro","Remarque"]];
+  filtered.forEach(e=>data.push([e.week,e.date,e.time,e.team,e.shift,e.worker,e.number,e.note]));
+
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Production");
+  XLSX.writeFile(wb,"production.xlsx");
+
+  closeExcelForm();
+}
+
+/* ===== MODAL إدخال ===== */
+function openInput(){inputModal.style.display="flex";}
+function closeInput(){inputModal.style.display="none";}
+
+/* ===== MODAL بحث ===== */
+function openSearchModal(){ 
+  document.getElementById("searchModal").style.display="flex"; 
+  document.getElementById("searchResults").innerHTML = "";
+}
+function closeSearchModal(){ document.getElementById("searchModal").style.display="none"; }
+
+function searchNumber(){
+  const num = document.getElementById("searchNumber").value.trim();
+  if(!num) return alert("Veuillez entrer un numéro");
+
+  const db = JSON.parse(localStorage.getItem("database")||"[]");
+  const results = db.filter(e=>e.number===num);
+
+  const resultsDiv = document.getElementById("searchResults");
+  resultsDiv.innerHTML = "";
+
+  if(results.length===0){
+    resultsDiv.innerHTML = "<b>Aucune donnée trouvée pour ce numéro.</b>";
+    return;
+  }
+
+  results.forEach((e,i)=>{
+    const html = `
+      <div style="border:1px solid #000000;padding:10px;margin-bottom:10px;border-radius:4px;background:#fff3e0">
+        <b style="color:#000">Semaine:</b> ${e.week} <br>
+        <b style="color:#000">Date:</b> ${e.date} <br>
+        <b style="color:#000">Heure:</b> ${e.time} <br>
+        <b style="color:#000">Équipe:</b> ${e.team} <br>
+        <b style="color:#000">Shift:</b> ${e.shift} <br>
+        <b style="color:#000">Travailleur:</b> ${e.worker} <br>
+        <b style="color:#000">Numéro:</b> ${e.number} <br>
+        <b style="color:#000">Remarque:</b> ${e.note}
+      </div>
+    `;
+    resultsDiv.innerHTML += html;
+  });
+}
+
+window.onload=()=>{
+  updateHeaderInfo();
+  updateShiftInfo();
+  loadData();
+  setInterval(updateTime, 1000);
+};
+</script>
+
+</body>
+</html>
