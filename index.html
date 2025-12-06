@@ -216,7 +216,7 @@ h2{
     <div class="auto-mode-indicator">A</div>
   </div>
   <div class="header-item auto-mode" id="workerItem" onclick="openEditModal('worker')">
-    <div class="label">Travailleur</div>
+    <div class="label">OPS</div>
     <div class="value" id="workerValue">Nom</div>
     <div class="auto-mode-indicator">A</div>
   </div>
@@ -224,8 +224,8 @@ h2{
 
 <div class="buttons-container">
   <button class="nav-button" onclick="openInput()">➕ Ajouter une entrée</button>
-  <button class="nav-button" onclick="generateFormattedPDF()">📄 Exporter PDF Organisé</button>
-  <button class="nav-button" onclick="exportAndClearVisiblePDF()">🗑️ Effacer (PDF Organisé)</button>
+  <button class="nav-button" onclick="generateFormattedPDF()">📄 Exporter PDF </button>
+  <button class="nav-button" onclick="exportAndClearVisiblePDF()">🗑️ Effacer (et PDF )</button>
   <button class="nav-button" onclick="openExcelForm()">📥 Exporter Excel</button>
   <button class="nav-button" onclick="openSearchModal()">🔍 Rechercher</button>
   <button class="nav-button" onclick="openPreviousShiftsModal()">📜 الشفتات السابقة</button>
@@ -248,7 +248,7 @@ h2{
 </table>
 
 <div id="shiftInfoDisplay" class="shift-info" style="margin-top: 20px; margin-bottom: 20px;">
-  Shift: -- | Équipe: -- | Travailleur: -- | Date: --
+  Shift: -- | Équipe: -- | OPS: -- | Date: --
 </div>
 
 <div class="shift-nav-buttons">
@@ -568,7 +568,7 @@ function updateShiftInfo() {
   
   const shiftInfoDisplay = document.getElementById("shiftInfoDisplay");
   if (shiftInfoDisplay) {
-    shiftInfoDisplay.textContent = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | Travailleur: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
+    shiftInfoDisplay.textContent = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | OPS: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
   }
 
   currentShiftFilter = null;
@@ -635,7 +635,7 @@ function previousShift() {
   currentShiftFilter = prevShift;
 
   document.getElementById("shiftInfoDisplay").textContent = 
-    `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | Travailleur: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
+    `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | OPS: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
 
   loadData();
 }
@@ -649,7 +649,7 @@ function nextShift() {
     currentShiftFilter = prevShift;
 
     document.getElementById("shiftInfoDisplay").textContent = 
-      `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | Travailleur: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
+      `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | OPS: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
   } else if (currentShiftIndex === 0) {
     currentShiftIndex = -1;
     currentShiftFilter = null;
@@ -708,7 +708,7 @@ function loadShiftFromModal(index) {
     currentShiftFilter = shift;
 
     document.getElementById("shiftInfoDisplay").textContent = 
-      `Shift Précédent (${index + 1}/${endedShifts.length}): ${shift.shift} | Équipe: ${shift.team} | Travailleur: ${shift.worker} | Date: ${shift.date} (Terminé à: ${shift.endedAt})`;
+      `Shift Précédent (${index + 1}/${endedShifts.length}): ${shift.shift} | Équipe: ${shift.team} | OPS: ${shift.worker} | Date: ${shift.date} (Terminé à: ${shift.endedAt})`;
 
     loadData();
     closePreviousShiftsModal();
@@ -845,7 +845,7 @@ function generateFormattedPDF() {
   
   // الحصول على معلومات الشفت
   const shiftInfo = getCurrentShiftInfo();
-  const shiftInfoText = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | Travailleur: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
+  const shiftInfoText = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | OPS: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
   const totalProducts = totalCount.textContent;
   
   // الحصول على معلومات الرأس
@@ -855,7 +855,7 @@ function generateFormattedPDF() {
     heure: document.getElementById("timeValue").textContent,
     équipe: document.getElementById("teamValue").textContent,
     shift: document.getElementById("shiftValue").textContent,
-    travailleur: document.getElementById("workerValue").textContent
+    OPS: document.getElementById("workerValue").textContent
   };
   
   // إنشاء PDF جديد
@@ -895,7 +895,7 @@ function generateFormattedPDF() {
   
   const headerInfoText = [
     `Semaine: ${headerInfo.semaine} | Date: ${headerInfo.date} | Heure: ${headerInfo.heure}`,
-    `Équipe: ${headerInfo.équipe} | Shift: ${headerInfo.shift} | Travailleur: ${headerInfo.travailleur}`
+    `Équipe: ${headerInfo.équipe} | Shift: ${headerInfo.shift} | OPS: ${headerInfo.OPS}`
   ];
   
   headerInfoText.forEach(line => {
@@ -1115,7 +1115,7 @@ function exportExcelWithOption(){
     });
   }
 
-  const data=[["Semaine","Date","Heure","Équipe","Shift","Travailleur","Numéro","Remarque"]];
+  const data=[["Semaine","Date","Heure","Équipe","Shift","OPS","Numéro","Remarque"]];
   filtered.forEach(e=>data.push([e.week,e.date,e.time,e.team,e.shift,e.worker,e.number,e.note]));
 
   const ws=XLSX.utils.aoa_to_sheet(data);
@@ -1156,7 +1156,7 @@ function searchNumber(){
         <b style="color:#000">Heure:</b> ${e.time} <br>
         <b style="color:#000">Équipe:</b> ${e.team} <br>
         <b style="color:#000">Shift:</b> ${e.shift} <br>
-        <b style="color:#000">Travailleur:</b> ${e.worker} <br>
+        <b style="color:#000">OPS:</b> ${e.worker} <br>
         <b style="color:#000">Numéro:</b> ${e.number} <br>
         <b style="color:#000">Remarque:</b> ${e.note}
       </div>
