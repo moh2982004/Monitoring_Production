@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Affichage de la production</title>
+<title>Suivi de Production</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -168,12 +168,22 @@ h2{
 }
 .shift-info {
   background: #fff3e0;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 15px;
+  border-radius: 10px;
   border: 2px solid #000000;
-  margin: 10px auto;
-  display: inline-block;
+  margin: 15px auto;
+  display: block;
   font-weight: bold;
+  max-width: 1000px;
+  text-align: center;
+}
+.shift-info strong {
+  color: #000000;
+}
+.shift-info small {
+  display: block;
+  margin-top: 8px;
+  color: #666;
 }
 .edit-modal-buttons {
   display: flex;
@@ -181,6 +191,56 @@ h2{
   justify-content: center;
   margin-top: 20px;
   flex-wrap: wrap;
+}
+
+/* Indicateur de prière */
+#prayerIndicator {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #4CAF50, #2E7D32);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-weight: bold;
+  font-size: 16px;
+  z-index: 1001;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+  text-align: center;
+  border: 2px solid white;
+  backdrop-filter: blur(5px);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: translateX(-50%) scale(1); box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
+  50% { transform: translateX(-50%) scale(1.05); box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6); }
+  100% { transform: translateX(-50%) scale(1); box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
+}
+
+/* Amélioration de l'affichage des shifts précédents */
+.previous-shift-item {
+  transition: all 0.3s ease;
+  border-left: 4px solid #ff9800;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+.previous-shift-item:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.previous-shift-item.team-A {
+  border-left-color: #2196F3;
+}
+
+.previous-shift-item.team-B {
+  border-left-color: #4CAF50;
 }
 </style>
 </head>
@@ -228,7 +288,7 @@ h2{
   <button class="nav-button" onclick="exportAndClearVisiblePDF()">🗑️ Effacer (et PDF )</button>
   <button class="nav-button" onclick="openExcelForm()">📥 Exporter Excel</button>
   <button class="nav-button" onclick="openSearchModal()">🔍 Rechercher</button>
-  <button class="nav-button" onclick="openPreviousShiftsModal()">📜 الشفتات السابقة</button>
+  <button class="nav-button" onclick="openPreviousShiftsModal()">📜 Shifts Précédents</button>
 </div>
 
 <div class="total-counter">
@@ -257,43 +317,43 @@ h2{
   <button class="nav-button" onclick="nextShift()">➡️ Shift Suivant</button>
 </div>
 
-<!-- Modal تعديل القيمة -->
+<!-- Modal Modification de valeur -->
 <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
   <div style="background:#fff3e0;padding:25px;border-radius:10px;width:450px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
-    <h3 id="editTitle" style="color:#000000;margin-bottom:20px;text-align:center;">تعديل القيمة</h3>
+    <h3 id="editTitle" style="color:#000000;margin-bottom:20px;text-align:center;">Modifier la valeur</h3>
     
     <div style="margin-bottom:20px;">
-      <div style="color:#000000;margin-bottom:8px;font-weight:bold;font-size:14px;">القيمة الحالية:</div>
+      <div style="color:#000000;margin-bottom:8px;font-weight:bold;font-size:14px;">Valeur actuelle:</div>
       <div id="currentValueDisplay" style="background:white;padding:12px;border-radius:4px;border:1px solid #000000;margin-bottom:15px;font-size:16px;font-weight:bold;text-align:center;"></div>
     </div>
     
     <div style="margin-bottom:25px;">
-      <div style="color:#000000;margin-bottom:8px;font-weight:bold;font-size:14px;">القيمة الجديدة:</div>
-      <input id="editInput" style="width:100%;padding:12px;font-size:16px;border:2px solid #2196F3;border-radius:4px;background:white;text-align:center;" placeholder="أدخل القيمة الجديدة">
+      <div style="color:#000000;margin-bottom:8px;font-weight:bold;font-size:14px;">Nouvelle valeur:</div>
+      <input id="editInput" style="width:100%;padding:12px;font-size:16px;border:2px solid #2196F3;border-radius:4px;background:white;text-align:center;" placeholder="Entrez la nouvelle valeur">
     </div>
     
     <div style="margin-bottom:15px;padding:12px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;text-align:center;">
       <div style="color:#666;font-size:12px;">
-        <span style="color:#4CAF50;font-weight:bold;">🔄 A</span> = أوتوماتيكي | 
-        <span style="color:#2196F3;font-weight:bold;">✏️ M</span> = يدوي
+        <span style="color:#4CAF50;font-weight:bold;">🔄 A</span> = Automatique | 
+        <span style="color:#2196F3;font-weight:bold;">✏️ M</span> = Manuel
       </div>
     </div>
     
     <div class="edit-modal-buttons">
-      <button class="nav-button apply-btn manual-mode-btn" onclick="applyChanges('manual')" style="background:#2196F3;color:white;border:2px solid #2196F3">💾 حفظ كـ يدوي</button>
-      <button class="nav-button apply-btn" onclick="applyChanges('auto')" style="background:#4CAF50;color:white;border:2px solid #4CAF50">💾 حفظ كـ أوتوماتيكي</button>
-      <button class="nav-button auto-mode-btn" onclick="setToAutoMode()" style="background:#4CAF50;color:white;border:2px solid #4CAF50">🔄 إرجاع لأوتوماتيكي</button>
-      <button class="nav-button cancel-btn" onclick="closeEditModal()" style="background:#f44336;color:white;border:2px solid #f44336">❌ إلغاء</button>
+      <button class="nav-button apply-btn manual-mode-btn" onclick="applyChanges('manual')" style="background:#2196F3;color:white;border:2px solid #2196F3">💾 Enregistrer en Manuel</button>
+      <button class="nav-button apply-btn" onclick="applyChanges('auto')" style="background:#4CAF50;color:white;border:2px solid #4CAF50">💾 Enregistrer en Automatique</button>
+      <button class="nav-button auto-mode-btn" onclick="setToAutoMode()" style="background:#4CAF50;color:white;border:2px solid #4CAF50">🔄 Retour à Automatique</button>
+      <button class="nav-button cancel-btn" onclick="closeEditModal()" style="background:#f44336;color:white;border:2px solid #f44336">❌ Annuler</button>
     </div>
   </div>
 </div>
 
-<!-- Modal إدخال جديد -->
+<!-- Modal Nouvelle entrée -->
 <div id="inputModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
   <div style="background:#fff3e0;padding:20px;border-radius:10px;width:300px;text-align:right;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
     <h3 style="color:#000000;margin-bottom:15px;">Nouvelle entrée</h3>
     <input id="inNumber" placeholder="Numéro" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #000000;border-radius:4px;background:white">
-    <input id="inNote" placeholder="Remarque (اختياري)" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #000000;border-radius:4px;background:white">
+    <input id="inNote" placeholder="Remarque (optionnel)" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #000000;border-radius:4px;background:white">
     <button class="nav-button" onclick="saveInput()" style="background:#000000;color:white;border:2px solid white">💾 Sauvegarder</button>
     <button class="nav-button" style="background:#ff9800;color:#000000;border:2px solid #000000" onclick="closeInput()">Annuler</button>
   </div>
@@ -317,7 +377,7 @@ h2{
   </div>
 </div>
 
-<!-- Modal Search -->
+<!-- Modal Recherche -->
 <div id="searchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
   <div style="background:#fff3e0;padding:20px;border-radius:10px;width:400px;text-align:right;max-height:80vh;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
     <h3 style="color:#000000;margin-bottom:15px;">Rechercher un numéro</h3>
@@ -328,17 +388,17 @@ h2{
   </div>
 </div>
 
-<!-- Modal الشفتات السابقة -->
+<!-- Modal Shifts Précédents -->
 <div id="previousShiftsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1000">
   <div style="background:#fff3e0;padding:20px;border-radius:10px;width:500px;max-height:80vh;text-align:right;overflow:auto;box-shadow:0 4px 20px rgba(0,0,0,0.2);border:2px solid #000000">
-    <h3 style="color:#000000;margin-bottom:15px;text-align:center;">📜 قائمة الشفتات السابقة</h3>
+    <h3 style="color:#000000;margin-bottom:15px;text-align:center;">📜 Liste des Shifts Précédents</h3>
     
     <div id="previousShiftsList" style="margin-bottom:15px;max-height:60vh;overflow-y:auto;">
-      <!-- سيتم ملؤها بالشفتات السابقة -->
+      <!-- Sera rempli avec les shifts précédents -->
     </div>
     
     <div style="text-align:center;">
-      <button class="nav-button" style="background:#000000;color:white;border:2px solid white" onclick="closePreviousShiftsModal()">إغلاق</button>
+      <button class="nav-button" style="background:#000000;color:white;border:2px solid white" onclick="closePreviousShiftsModal()">Fermer</button>
     </div>
   </div>
 </div>
@@ -371,15 +431,142 @@ function getWeekNumber(d){
   return Math.ceil((((d-yearStart)/86400000)+1)/7);
 }
 
+/* ===== Système de shifts modifié selon le jour ===== */
 function getCurrentShiftAndTeam(){
-  const h=new Date().getHours();
-  const even=getWeekNumber(new Date())%2===0;
-  if(h>=7&&h<15) return {shift:"Matin",team:even?"B":"A",worker:even?"Hind":"Redouane"};
-  if(h>=15&&h<23) return {shift:"Soir",team:even?"A":"B",worker:even?"Redouane":"Hind"};
-  return {shift:"Nuit",team:"--",worker:"--"};
+  const now = new Date();
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const dayOfWeek = now.getDay(); // 0=Dimanche, 1=Lundi, 2=Mardi, 3=Mercredi, 4=Jeudi, 5=Vendredi, 6=Samedi
+  const even = getWeekNumber(now) % 2 === 0;
+  
+  // Fonction helper pour vérifier l'heure
+  const isBetween = (startH, startM, endH, endM) => {
+    const currentTime = hour * 60 + minutes;
+    const startTime = startH * 60 + startM;
+    const endTime = endH * 60 + endM;
+    return currentTime >= startTime && currentTime < endTime;
+  };
+
+  // Tableau des shifts selon le jour
+  switch(dayOfWeek) {
+    case 5: // Vendredi
+      if (isBetween(7, 0, 14, 30)) {
+        return {shift: "Matin", team: even ? "B" : "A", worker: even ? "Hind" : "Redouane"};
+      } else if (isBetween(14, 30, 15, 15)) {
+        return {shift: "Prière du Vendredi", team: "Pause", worker: "Pause"};
+      } else if (isBetween(15, 15, 23, 0)) {
+        return {shift: "Soir", team: even ? "A" : "B", worker: even ? "Redouane" : "Hind"};
+      } else {
+        return {shift: "Nuit", team: "--", worker: "--"};
+      }
+      
+    case 6: // Samedi
+      if (isBetween(7, 0, 15, 0)) {
+        return {shift: "Matin", team: even ? "B" : "A", worker: even ? "Hind" : "Redouane"};
+      } else if (isBetween(15, 0, 23, 15)) {
+        return {shift: "Soir", team: even ? "A" : "B", worker: even ? "Redouane" : "Hind"};
+      } else {
+        return {shift: "Nuit", team: "--", worker: "--"};
+      }
+      
+    case 0: // Dimanche
+      if (isBetween(7, 0, 15, 0)) {
+        return {shift: "Matin", team: even ? "B" : "A", worker: even ? "Hind" : "Redouane"};
+      } else if (isBetween(15, 0, 22, 30)) {
+        return {shift: "Soir", team: even ? "A" : "B", worker: even ? "Redouane" : "Hind"};
+      } else {
+        return {shift: "Nuit", team: "--", worker: "--"};
+      }
+      
+    case 1: // Lundi
+      if (isBetween(6, 30, 15, 0)) {
+        return {shift: "Matin", team: even ? "B" : "A", worker: even ? "Hind" : "Redouane"};
+      } else if (isBetween(15, 0, 23, 0)) {
+        return {shift: "Soir", team: even ? "A" : "B", worker: even ? "Redouane" : "Hind"};
+      } else {
+        return {shift: "Nuit", team: "--", worker: "--"};
+      }
+      
+    default: // Mardi à Jeudi (jours normaux)
+      if (isBetween(7, 0, 15, 0)) {
+        return {shift: "Matin", team: even ? "B" : "A", worker: even ? "Hind" : "Redouane"};
+      } else if (isBetween(15, 0, 23, 0)) {
+        return {shift: "Soir", team: even ? "A" : "B", worker: even ? "Redouane" : "Hind"};
+      } else {
+        return {shift: "Nuit", team: "--", worker: "--"};
+      }
+  }
 }
 
-/* ===== نظام إدارة معلومات الرأس ===== */
+/* ===== Fonction pour obtenir les horaires des shifts actuels ===== */
+function getCurrentShiftSchedule() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const dayNames = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+  const currentDay = dayNames[dayOfWeek];
+  
+  let schedule = "";
+  let showPrayerIndicator = false;
+  
+  switch(dayOfWeek) {
+    case 5: // Vendredi
+      schedule = "⏰ Vendredi: Matin (07:00-14:30) | Prière du Vendredi (14:30-15:15) | Soir (15:15-23:00)";
+      // Vérifier si on est dans l'heure de prière
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTime = hour * 60 + minutes;
+      if (currentTime >= 14*60 + 30 && currentTime < 15*60 + 15) {
+        showPrayerIndicator = true;
+      }
+      break;
+      
+    case 6: // Samedi
+      schedule = "⏰ Samedi: Matin (07:00-15:00) | Soir (15:00-23:15) | Nuit (23:15-07:00)";
+      break;
+      
+    case 0: // Dimanche
+      schedule = "⏰ Dimanche: Matin (07:00-15:00) | Soir (15:00-22:30) | Nuit (22:30-07:00)";
+      break;
+      
+    case 1: // Lundi
+      schedule = "⏰ Lundi: Matin (06:30-15:00) | Soir (15:00-23:00) | Nuit (23:00-06:30)";
+      break;
+      
+    default: // Mardi à Jeudi
+      schedule = "⏰ Jours Normaux: Matin (07:00-15:00) | Soir (15:00-23:00) | Nuit (23:00-07:00)";
+      break;
+  }
+  
+  return {
+    text: schedule,
+    showPrayer: showPrayerIndicator,
+    dayName: currentDay
+  };
+}
+
+/* ===== Mettre à jour l'indicateur de prière en haut de page ===== */
+function updatePrayerIndicator() {
+  const schedule = getCurrentShiftSchedule();
+  
+  if (schedule.showPrayer) {
+    let indicator = document.getElementById("prayerIndicator");
+    
+    if (!indicator) {
+      // Créer l'indicateur s'il n'existe pas
+      indicator = document.createElement("div");
+      indicator.id = "prayerIndicator";
+      indicator.innerHTML = "🕌 Temps de Prière du Vendredi";
+      document.body.appendChild(indicator);
+    }
+  } else {
+    const indicator = document.getElementById("prayerIndicator");
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+}
+
+/* ===== Système de gestion des informations d'en-tête ===== */
 function openEditModal(item) {
   currentEditingItem = item;
   
@@ -389,17 +576,17 @@ function openEditModal(item) {
   const editInput = document.getElementById("editInput");
   
   const labels = {
-    'week': 'تعديل الأسبوع',
-    'date': 'تعديل التاريخ',
-    'time': 'تعديل الوقت',
-    'team': 'تعديل الفريق',
-    'shift': 'تعديل الشفت',
-    'worker': 'تعديل العامل'
+    'week': 'Modifier la Semaine',
+    'date': 'Modifier la Date',
+    'time': 'Modifier l\'Heure',
+    'team': 'Modifier l\'Équipe',
+    'shift': 'Modifier le Shift',
+    'worker': 'Modifier l\'OPS'
   };
   
   const currentValue = document.getElementById(item + "Value").textContent;
   
-  editTitle.textContent = labels[item] || 'تعديل القيمة';
+  editTitle.textContent = labels[item] || 'Modifier la valeur';
   currentValueDisplay.textContent = currentValue;
   editInput.value = currentValue;
   editInput.focus();
@@ -421,28 +608,28 @@ function applyChanges(mode) {
   const newValue = editInput.value.trim();
   
   if (!newValue) {
-    alert("الرجاء إدخال قيمة جديدة");
+    alert("Veuillez entrer une nouvelle valeur");
     return;
   }
   
-  // تحديث القيمة في الواجهة
+  // Mettre à jour la valeur dans l'interface
   document.getElementById(currentEditingItem + "Value").textContent = newValue;
   
-  // تحديث الوضع
+  // Mettre à jour le mode
   headerModes[currentEditingItem] = mode;
   
-  // تحديث مظهر العنصر
+  // Mettre à jour l'apparence de l'élément
   updateHeaderItemAppearance(currentEditingItem);
   
-  // إذا كان الوضع أوتوماتيكي، تحديث القيمة تلقائياً
+  // Si le mode est automatique, mettre à jour la valeur automatiquement
   if (mode === 'auto') {
     updateAutoValue(currentEditingItem);
   }
   
-  // حفظ في localStorage
+  // Sauvegarder dans localStorage
   saveHeaderInfo();
   
-  // تحديث معلومات الشفت
+  // Mettre à jour les informations du shift
   updateShiftInfo();
   
   closeEditModal();
@@ -451,19 +638,19 @@ function applyChanges(mode) {
 function setToAutoMode() {
   if (!currentEditingItem) return;
   
-  // تعيين الوضع لأوتوماتيك
+  // Définir le mode sur automatique
   headerModes[currentEditingItem] = 'auto';
   
-  // تحديث القيمة تلقائياً
+  // Mettre à jour la valeur automatiquement
   updateAutoValue(currentEditingItem);
   
-  // تحديث مظهر العنصر
+  // Mettre à jour l'apparence de l'élément
   updateHeaderItemAppearance(currentEditingItem);
   
-  // حفظ في localStorage
+  // Sauvegarder dans localStorage
   saveHeaderInfo();
   
-  // تحديث معلومات الشفت
+  // Mettre à jour les informations du shift
   updateShiftInfo();
   
   closeEditModal();
@@ -526,35 +713,35 @@ function loadHeaderInfo() {
   const now = new Date();
   const autoShiftInfo = getCurrentShiftAndTeam();
   
-  // تحميل الأنماط
+  // Charger les modes
   if (saved.modes) {
     headerModes = saved.modes;
   }
   
-  // تطبيق القيم والأنماط
+  // Appliquer les valeurs et modes
   const items = ['week', 'date', 'time', 'team', 'shift', 'worker'];
   items.forEach(item => {
     const valueElement = document.getElementById(item + "Value");
     
-    // تعيين القيمة
+    // Définir la valeur
     if (saved[item] && headerModes[item] === 'manual') {
       valueElement.textContent = saved[item];
     } else {
       updateAutoValue(item);
     }
     
-    // تحديث المظهر
+    // Mettre à jour l'apparence
     updateHeaderItemAppearance(item);
   });
 }
 
-/* ===== إدارة الشيفتات ===== */
+/* ===== Gestion des shifts ===== */
 function getCurrentShiftInfo() {
   const now = new Date();
   const dateStr = now.toLocaleDateString('fr-FR');
   const auto = getCurrentShiftAndTeam();
   
-  // استخدام القيم اليدوية إذا كانت في الوضع اليدوي
+  // Utiliser les valeurs manuelles si en mode manuel
   return {
     date: headerModes.date === 'manual' ? document.getElementById("dateValue").textContent : dateStr,
     shift: headerModes.shift === 'manual' ? document.getElementById("shiftValue").textContent : auto.shift,
@@ -565,20 +752,33 @@ function getCurrentShiftInfo() {
 
 function updateShiftInfo() {
   const shiftInfo = getCurrentShiftInfo();
+  const schedule = getCurrentShiftSchedule();
   
   const shiftInfoDisplay = document.getElementById("shiftInfoDisplay");
   if (shiftInfoDisplay) {
-    shiftInfoDisplay.textContent = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | OPS: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
+    shiftInfoDisplay.innerHTML = `
+      <strong>Jour:</strong> ${schedule.dayName} | 
+      <strong>Shift:</strong> ${shiftInfo.shift} | 
+      <strong>Équipe:</strong> ${shiftInfo.team} | 
+      <strong>OPS:</strong> ${shiftInfo.worker} | 
+      <strong>Date:</strong> ${shiftInfo.date}<br>
+      <small style="color:#666;font-size:12px;">${schedule.text}</small>
+    `;
   }
 
   currentShiftFilter = null;
   currentShiftIndex = -1;
   loadData();
+  
+  // Mettre à jour l'indicateur de prière
+  updatePrayerIndicator();
 }
 
 function endCurrentShift() {
+  const currentShift = getCurrentShiftInfo();
+  const schedule = getCurrentShiftSchedule();
+  
   if(confirm("Êtes-vous sûr de vouloir terminer le shift actuel ? Le tableau visible sera effacé, mais les données resteront dans la base de données.")) {
-    const currentShift = getCurrentShiftInfo();
     const db = JSON.parse(localStorage.getItem("database") || "[]");
     const currentShiftData = db.filter(e => 
       e.date === currentShift.date &&
@@ -591,13 +791,16 @@ function endCurrentShift() {
     
     const shiftId = Date.now();
     
+    // Ajouter les informations du jour et du shift aux données sauvegardées
     const shiftToSave = {
       id: shiftId,
       date: currentShift.date,
+      day: schedule.dayName,
       shift: currentShift.shift,
       team: currentShift.team,
       worker: currentShift.worker,
       endedAt: new Date().toLocaleTimeString('fr-FR'),
+      schedule: schedule.text,
       data: [...currentShiftData]
     };
     
@@ -609,7 +812,16 @@ function endCurrentShift() {
     currentShiftFilter = null;
     currentShiftIndex = -1;
     
-    document.getElementById("shiftInfoDisplay").textContent = "Shift: Terminé - Prêt pour nouveau shift";
+    document.getElementById("shiftInfoDisplay").innerHTML = `
+      <strong>Shift Terminé</strong> - Prêt pour nouveau shift<br>
+      <small style="color:#666;font-size:12px;">${schedule.text}</small>
+    `;
+    
+    // Supprimer l'indicateur de prière s'il existe
+    const indicator = document.getElementById("prayerIndicator");
+    if (indicator) {
+      indicator.remove();
+    }
     
     alert("Shift terminé avec succès ! Le tableau est maintenant vide et prêt pour le prochain shift.");
   }
@@ -634,8 +846,9 @@ function previousShift() {
   const prevShift = endedShifts[currentShiftIndex];
   currentShiftFilter = prevShift;
 
-  document.getElementById("shiftInfoDisplay").textContent = 
-    `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | OPS: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
+  document.getElementById("shiftInfoDisplay").innerHTML = 
+    `<strong>Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}):</strong> ${prevShift.shift} | <strong>Équipe:</strong> ${prevShift.team} | <strong>OPS:</strong> ${prevShift.worker} | <strong>Date:</strong> ${prevShift.date} (Terminé à: ${prevShift.endedAt})<br>
+     <small style="color:#666;font-size:12px;">${prevShift.schedule || 'Horaire normal'}</small>`;
 
   loadData();
 }
@@ -648,8 +861,9 @@ function nextShift() {
     const prevShift = endedShifts[currentShiftIndex];
     currentShiftFilter = prevShift;
 
-    document.getElementById("shiftInfoDisplay").textContent = 
-      `Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}): ${prevShift.shift} | Équipe: ${prevShift.team} | OPS: ${prevShift.worker} | Date: ${prevShift.date} (Terminé à: ${prevShift.endedAt})`;
+    document.getElementById("shiftInfoDisplay").innerHTML = 
+      `<strong>Shift Précédent (${currentShiftIndex + 1}/${endedShifts.length}):</strong> ${prevShift.shift} | <strong>Équipe:</strong> ${prevShift.team} | <strong>OPS:</strong> ${prevShift.worker} | <strong>Date:</strong> ${prevShift.date} (Terminé à: ${prevShift.endedAt})<br>
+       <small style="color:#666;font-size:12px;">${prevShift.schedule || 'Horaire normal'}</small>`;
   } else if (currentShiftIndex === 0) {
     currentShiftIndex = -1;
     currentShiftFilter = null;
@@ -663,13 +877,13 @@ function nextShift() {
   loadData();
 }
 
-/* ===== Modal الشفتات السابقة ===== */
+/* ===== Modal Shifts Précédents ===== */
 function openPreviousShiftsModal() {
   const endedShifts = JSON.parse(localStorage.getItem("endedShifts") || "[]");
   const listContainer = document.getElementById("previousShiftsList");
   
   if (endedShifts.length === 0) {
-    listContainer.innerHTML = "<p style='text-align:center;color:#000000;padding:20px;'>لا توجد شفتات سابقة</p>";
+    listContainer.innerHTML = "<p style='text-align:center;color:#000000;padding:20px;'>Aucun shift précédent</p>";
   } else {
     let html = "<div style='margin-bottom:10px;'>";
     
@@ -681,10 +895,19 @@ function openPreviousShiftsModal() {
       html += `
         <div class="previous-shift-item ${teamClass}" 
              onclick="loadShiftFromModal(${index})"
-             style="background:${bgColor};">
-          <strong>${shift.shift}</strong> - الفريق ${shift.team}<br>
-          <small>${shift.date} - ${shift.worker}</small><br>
-          <small>انتهى الساعة: ${shift.endedAt}</small>
+             style="background:${bgColor}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong>${shift.day} - ${shift.shift}</strong><br>
+              <small>${shift.date} - Équipe ${shift.team} - ${shift.worker}</small>
+            </div>
+            <div style="text-align:left; font-size:12px;">
+              ${shift.endedAt}
+            </div>
+          </div>
+          <div style="font-size:11px; color:#666; margin-top:5px;">
+            ${shift.schedule || 'Horaire normal'}
+          </div>
         </div>
       `;
     });
@@ -707,22 +930,23 @@ function loadShiftFromModal(index) {
     const shift = endedShifts[index];
     currentShiftFilter = shift;
 
-    document.getElementById("shiftInfoDisplay").textContent = 
-      `Shift Précédent (${index + 1}/${endedShifts.length}): ${shift.shift} | Équipe: ${shift.team} | OPS: ${shift.worker} | Date: ${shift.date} (Terminé à: ${shift.endedAt})`;
+    document.getElementById("shiftInfoDisplay").innerHTML = 
+      `<strong>Shift Précédent (${index + 1}/${endedShifts.length}):</strong> ${shift.shift} | <strong>Équipe:</strong> ${shift.team} | <strong>OPS:</strong> ${shift.worker} | <strong>Date:</strong> ${shift.date} (Terminé à: ${shift.endedAt})<br>
+       <small style="color:#666;font-size:12px;">${shift.schedule || 'Horaire normal'}</small>`;
 
     loadData();
     closePreviousShiftsModal();
   }
 }
 
-/* ===== تحديث الوقت تلقائياً ===== */
+/* ===== Mettre à jour l'heure automatiquement ===== */
 function updateTime() {
   if (headerModes.time === 'auto') {
     document.getElementById("timeValue").textContent = new Date().toLocaleTimeString('fr-FR');
   }
 }
 
-/* ===== ENREGISTREMENT مع تراكم الملاحظات ===== */
+/* ===== ENREGISTREMENT avec accumulation des notes ===== */
 function saveInput(){
   const inNumber = document.getElementById("inNumber");
   const inNote = document.getElementById("inNote");
@@ -803,7 +1027,7 @@ function loadData(){
   });
 }
 
-/* ===== حذف صف ===== */
+/* ===== Supprimer une ligne ===== */
 function deleteRow(i){
   if(prompt("Code suppression ?")!=="1234") return;
   let db=JSON.parse(localStorage.getItem("database")||"[]");
@@ -812,25 +1036,25 @@ function deleteRow(i){
   loadData();
 }
 
-/* ===== توليد PDF منظم ===== */
+/* ===== Générer PDF formaté ===== */
 function generateFormattedPDF() {
-  // الحصول على جميع صفوف الجدول المعروض
+  // Obtenir toutes les lignes du tableau affiché
   const tableRows = table.querySelectorAll('tr');
   
-  // التحقق من وجود بيانات
+  // Vérifier s'il y a des données
   if (tableRows.length === 0) {
-    alert("لا توجد بيانات في الجدول لتصديرها!");
+    alert("Aucune donnée dans le tableau à exporter!");
     return;
   }
   
-  // تجميع بيانات الجدول
+  // Collecter les données du tableau
   const tableData = [];
   
-  // إضافة رؤوس الجدول (العناوين)
+  // Ajouter les en-têtes du tableau
   const headers = ['Heure', 'Numéro', 'Remarque'];
   tableData.push(headers);
   
-  // إضافة بيانات الصفوف
+  // Ajouter les données des lignes
   tableRows.forEach(row => {
     const cells = row.querySelectorAll('td');
     if (cells.length >= 3) {
@@ -843,12 +1067,7 @@ function generateFormattedPDF() {
     }
   });
   
-  // الحصول على معلومات الشفت
-  const shiftInfo = getCurrentShiftInfo();
-  const shiftInfoText = `Shift: ${shiftInfo.shift} | Équipe: ${shiftInfo.team} | OPS: ${shiftInfo.worker} | Date: ${shiftInfo.date}`;
-  const totalProducts = totalCount.textContent;
-  
-  // الحصول على معلومات الرأس
+  // Obtenir les informations de l'en-tête
   const headerInfo = {
     semaine: document.getElementById("weekValue").textContent,
     date: document.getElementById("dateValue").textContent,
@@ -858,23 +1077,25 @@ function generateFormattedPDF() {
     OPS: document.getElementById("workerValue").textContent
   };
   
-  // إنشاء PDF جديد
+  const totalProducts = totalCount.textContent;
+  
+  // Créer un nouveau PDF
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // إعدادات الصفحة
+  // Paramètres de la page
   const pageWidth = 210;
   const pageHeight = 297;
   const margin = 15;
   const lineHeight = 7;
   let yPos = margin;
   
-  // دالة لإضافة صفحة جديدة
+  // Fonction pour ajouter une nouvelle page
   const addNewPage = () => {
     pdf.addPage();
     yPos = margin;
     
-    // إعادة كتابة العنوان على الصفحة الجديدة
+    // Réécrire le titre sur la nouvelle page
     pdf.setFontSize(20);
     pdf.setFont("helvetica", "bold");
     pdf.text("SUIVI PRODUCTION MOBILISE", pageWidth / 2, yPos, { align: 'center' });
@@ -883,13 +1104,13 @@ function generateFormattedPDF() {
     return yPos;
   };
   
-  // العنوان الرئيسي
+  // Titre principal
   pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
   pdf.text("SUIVI PRODUCTION MOBILISE", pageWidth / 2, yPos, { align: 'center' });
   yPos += 15;
   
-  // معلومات الرأس
+  // Informations de l'en-tête (sans informations du jour ni horaires)
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "normal");
   
@@ -905,56 +1126,47 @@ function generateFormattedPDF() {
   
   yPos += 5;
   
-  // معلومات الشفت الحالية
-  pdf.setFont("helvetica", "bold");
-  pdf.text("Informations du Shift Actuel:", margin, yPos);
-  yPos += lineHeight;
-  
-  pdf.setFont("helvetica", "normal");
-  pdf.text(shiftInfoText, margin, yPos);
-  yPos += lineHeight * 2;
-  
-  // العدد الكلي
+  // Total
   pdf.setFont("helvetica", "bold");
   pdf.text(`Total produits: ${totalProducts}`, pageWidth / 2, yPos, { align: 'center' });
   yPos += 10;
   
-  // إعداد الجدول
+  // Préparer le tableau
   const tableTop = yPos;
   const cellWidth = (pageWidth - 2 * margin) / 3;
   const cellHeight = 8;
   
-  // رأس الجدول
+  // En-tête du tableau
   pdf.setFillColor(0, 0, 0);
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
   
-  // رسم خلايا الرأس
+  // Dessiner les cellules d'en-tête
   pdf.rect(margin, tableTop, cellWidth, cellHeight, 'F');
   pdf.rect(margin + cellWidth, tableTop, cellWidth, cellHeight, 'F');
   pdf.rect(margin + cellWidth * 2, tableTop, cellWidth, cellHeight, 'F');
   
-  // كتابة رؤوس الجدول
+  // Écrire les en-têtes du tableau
   pdf.text(headers[0], margin + cellWidth / 2, tableTop + cellHeight / 2 + 2, { align: 'center' });
   pdf.text(headers[1], margin + cellWidth * 1.5, tableTop + cellHeight / 2 + 2, { align: 'center' });
   pdf.text(headers[2], margin + cellWidth * 2.5, tableTop + cellHeight / 2 + 2, { align: 'center' });
   
   yPos = tableTop + cellHeight;
   
-  // بيانات الجدول
+  // Données du tableau
   pdf.setTextColor(0, 0, 0);
   pdf.setFont("helvetica", "normal");
   
   let currentPageRow = 0;
   const maxRowsPerPage = Math.floor((pageHeight - yPos - margin) / cellHeight) - 1;
   
-  // بدء من الصف الثاني (تجاهل الرؤوس)
+  // Commencer à partir de la deuxième ligne (ignorer les en-têtes)
   for (let i = 1; i < tableData.length; i++) {
-    // التحقق إذا نحتاج صفحة جديدة
+    // Vérifier si nous avons besoin d'une nouvelle page
     if (currentPageRow >= maxRowsPerPage) {
       yPos = addNewPage();
       
-      // إعادة رسم رأس الجدول في الصفحة الجديدة
+      // Redessiner l'en-tête du tableau sur la nouvelle page
       pdf.setFillColor(0, 0, 0);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
@@ -976,32 +1188,32 @@ function generateFormattedPDF() {
     
     const row = tableData[i];
     
-    // رسم خلفية متناوبة للصفوف
+    // Dessiner un arrière-plan alterné pour les lignes
     if (currentPageRow % 2 === 0) {
       pdf.setFillColor(240, 240, 240);
       pdf.rect(margin, yPos, cellWidth * 3, cellHeight, 'F');
     }
     
-    // حدود الخلايا
+    // Bordures des cellules
     pdf.setDrawColor(0, 0, 0);
     pdf.rect(margin, yPos, cellWidth, cellHeight);
     pdf.rect(margin + cellWidth, yPos, cellWidth, cellHeight);
     pdf.rect(margin + cellWidth * 2, yPos, cellWidth, cellHeight);
     
-    // كتابة البيانات - العمود الأول (الوقت)
+    // Écrire les données - Première colonne (Heure)
     const heureText = row[0] || '';
     pdf.text(heureText, margin + cellWidth / 2, yPos + cellHeight / 2 + 2, { align: 'center' });
     
-    // كتابة البيانات - العمود الثاني (الرقم)
+    // Écrire les données - Deuxième colonne (Numéro)
     const numeroText = row[1] || '';
     pdf.text(numeroText, margin + cellWidth * 1.5, yPos + cellHeight / 2 + 2, { align: 'center' });
     
-    // كتابة البيانات - العمود الثالث (الملاحظات)
+    // Écrire les données - Troisième colonne (Remarques)
     const noteText = row[2] || '';
     
-    // معالجة الملاحظات الطويلة
+    // Gérer les remarques longues
     if (noteText.length > 25) {
-      // تقسيم الملاحظات الطويلة
+      // Diviser les remarques longues
       const words = noteText.split(' ');
       let currentLine = '';
       let lines = [];
@@ -1016,24 +1228,24 @@ function generateFormattedPDF() {
       }
       if (currentLine) lines.push(currentLine.trim());
       
-      // كتابة السطر الأول
+      // Écrire la première ligne
       if (lines[0]) {
         pdf.text(lines[0], margin + cellWidth * 2.5, yPos + cellHeight / 2 + 2, { align: 'center' });
       }
       
-      // إذا كانت هناك أسطر إضافية، نزيد ارتفاع الخلية
+      // S'il y a des lignes supplémentaires, augmenter la hauteur de la cellule
       if (lines.length > 1) {
         const extraHeight = (lines.length - 1) * 4;
         pdf.rect(margin + cellWidth * 2, yPos, cellWidth, cellHeight + extraHeight);
         
-        // كتابة الأسطر الإضافية
+        // Écrire les lignes supplémentaires
         for (let j = 1; j < lines.length; j++) {
           if (lines[j]) {
             pdf.text(lines[j], margin + cellWidth * 2.5, yPos + cellHeight / 2 + 2 + (j * 4), { align: 'center' });
           }
         }
         
-        // تعديل حدود الخلايا المجاورة
+        // Ajuster les bordures des cellules adjacentes
         pdf.rect(margin, yPos, cellWidth, cellHeight + extraHeight);
         pdf.rect(margin + cellWidth, yPos, cellWidth, cellHeight + extraHeight);
         
@@ -1042,7 +1254,7 @@ function generateFormattedPDF() {
         yPos += cellHeight;
       }
     } else {
-      // الملاحظات القصيرة
+      // Remarques courtes
       pdf.text(noteText, margin + cellWidth * 2.5, yPos + cellHeight / 2 + 2, { align: 'center' });
       yPos += cellHeight;
     }
@@ -1050,14 +1262,14 @@ function generateFormattedPDF() {
     currentPageRow++;
   }
   
-  // تذييل الصفحة الأخيرة
+  // Pied de page de la dernière page
   yPos = Math.max(yPos, pageHeight - margin);
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "italic");
   pdf.setTextColor(100, 100, 100);
   pdf.text(`Document généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, pageWidth / 2, yPos, { align: 'center' });
   
-  // حفظ PDF
+  // Sauvegarder PDF
   const fileName = `Production_${headerInfo.date.replace(/\//g, '-')}_${headerInfo.shift}_${headerInfo.équipe}.pdf`;
   pdf.save(fileName);
   
@@ -1067,14 +1279,14 @@ function generateFormattedPDF() {
 function exportAndClearVisiblePDF() {
   generateFormattedPDF();
   
-  // مسح الجدول بعد إنشاء PDF
+  // Effacer le tableau après la création du PDF
   setTimeout(() => {
     table.innerHTML = "";
     totalCount.textContent = "0";
   }, 1000);
 }
 
-/* ===== MODAL إدخال ===== */
+/* ===== MODAL entrée ===== */
 function openInput(){
   document.getElementById("inputModal").style.display="flex";
 }
@@ -1126,7 +1338,7 @@ function exportExcelWithOption(){
   closeExcelForm();
 }
 
-/* ===== MODAL بحث ===== */
+/* ===== MODAL recherche ===== */
 function openSearchModal(){ 
   document.getElementById("searchModal").style.display="flex"; 
   document.getElementById("searchResults").innerHTML = "";
@@ -1170,6 +1382,7 @@ window.onload=()=>{
   updateShiftInfo();
   loadData();
   setInterval(updateTime, 1000);
+  setInterval(updatePrayerIndicator, 60000); // Vérifier toutes les minutes
 };
 </script>
 
